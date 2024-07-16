@@ -1,0 +1,557 @@
+CREATE DATABASE DW_MaterialConstrucao 
+
+ 
+
+use DW_MaterialConstrucao 
+
+ 
+
+ 
+
+CREATE TABLE DW_TEMPO_VENDA( 
+
+ 
+
+ID_DW_TEMPO_VENDA INT PRIMARY KEY IDENTITY(1,1), 
+
+DIA INT NOT NULL, 
+
+MES INT NOT NULL, 
+
+ANO INT NOT NULL, 
+
+) 
+
+ 
+
+CREATE TABLE DW_FUNCIONARIO( 
+
+ 
+
+ID_DW_FUNCIONARIO INT PRIMARY KEY IDENTITY(1,1), 
+
+ID_FONTE_FUNCIONARIO INT NOT NULL, 
+
+NOME INT NULL, 
+
+ 
+
+) 
+
+ 
+
+CREATE TABLE DW_CLIENTE( 
+
+ 
+
+ID_DW_CLIENTE INT PRIMARY KEY IDENTITY(1,1), 
+
+ID_FONTE_CLIENTE INT NOT NULL, 
+
+SEXO INT NOT NULL, 
+
+ANO_ANIVERSARIO INT NOT NULL, 
+
+MES_ANIVERSARIO INT NOT NULL, 
+
+ANO_CADASTRO_DATA INT NOT NULL, 
+
+MES_CADASTRO_DATA INT NOT NULL, 
+
+ 
+
+) 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+CREATE TABLE DW_PRODUTO( 
+
+ 
+
+ID_DW_PRODUTO INT PRIMARY KEY IDENTITY(1,1), 
+
+ID_FONTE_PRODUTO INT NOT NULL, 
+
+PRECO_CUSTO DECIMAL(10,2), 
+
+PRECO_VENDA DECIMAL(10,2), 
+
+ 
+
+) 
+
+ 
+
+CREATE TABLE FATO_VENDA( 
+
+ 
+
+ID_FATO_VENDA INT PRIMARY KEY IDENTITY(1,1), 
+
+ID_FONTE_VENDA INT NOT NULL, 
+
+FK_ID_DW_PRODUTO INT FOREIGN KEY REFERENCES DW_PRODUTO(ID_DW_PRODUTO), 
+
+FK_ID_DW_CLIENTE INT FOREIGN KEY REFERENCES  DW_CLIENTE(ID_DW_CLIENTE), 
+
+FK_ID_DW_FUNCIONARIO INT FOREIGN KEY REFERENCES  DW_FUNCIONARIO(ID_DW_FUNCIONARIO), 
+
+FK_ID_DW_TEMPO_VENDA INT FOREIGN KEY REFERENCES  DW_TEMPO_VENDA (ID_DW_TEMPO_VENDA ), 
+
+DESCONTO DECIMAL(10,2) NOT NULL, 
+
+VALOR_BRUTO DECIMAL(10,2) NOT NULL, 
+
+VALOR_LIQUIDO DECIMAL(10,2) NOT NULL, 
+
+TIPO INT NOT NULL, 
+
+) 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+Scripts SQL de ETL 
+
+ 
+
+Funções 
+
+  
+
+CREATE FUNCTION dbo.GET_SEXO(@SEXO varchar(25)) 
+
+RETURNS int 
+
+AS 
+
+BEGIN 
+
+DECLARE @codigoSexo int 
+
+  
+
+IF(@SEXO = "feminino") 
+
+  SET @codigoSexo = 1 
+
+ELSE IF(@SEXO = "masculino") 
+
+  SET @codigoSexo = 2 
+
+ELSE IF(@SEXO = "outro") 
+
+  SET @codigoSexo = 3 
+
+ELSE 
+
+  SET @codigoSexo = 0 
+
+  
+
+RETURN @codigoSexo 
+
+END 
+
+  
+
+CREATE FUNCTION dbo.GET_TIPO_VENDA(@TIPO varchar(75)) 
+
+RETURNS int 
+
+AS 
+
+BEGIN 
+
+DECLARE @tipoVenda int 
+
+  
+
+IF(@TIPO = "Dinheiro") 
+
+  SET @tipoVenda = 1 
+
+ELSE IF(@TIPO = "Cartao de credito") 
+
+  SET @tipoVenda = 2 
+
+ELSE IF(@TIPO = "Transferencia bancaria") 
+
+  SET @tipoVenda = 3 
+
+ELSE IF(@TIPO = "Pix") 
+
+  SET @tipoVenda = 4 
+
+ELSE IF(@TIPO = "Cheque") 
+
+  SET @tipoVenda = 5 
+
+ELSE IF(@TIPO = "Boleto bancario") 
+
+  SET @tipoVenda = 6 
+
+ELSE 
+
+  SET @tipoVenda = 0 
+
+  
+
+RETURN @tipoVenda 
+
+END 
+
+  
+
+---------------------------------- 
+
+  
+
+ETL inicial do cliente 
+
+  
+
+Insert into DW_CLIENTE(ID_FONTE_CLIENTE,SEXO, ANO_ANIVERSARIO, 
+
+MES_ANIVERSARIO,ANO_CADASTRO_DATA,MES_CADASTRO_DATA) 
+
+select 
+
+ID_CLIENTE, 
+
+GET_SEXO(SEXO), 
+
+DATEPART(YEAR,ANIVERSARIO), 
+
+DATEPART(MONTH,ANIVERSARIO), 
+
+DATEPART(YEAR,CADASTRO_DATA), 
+
+DATEPART(MONTH,CADASTRO_DATA) 
+
+  from Fonte_MaterialDeConstrucao.Cliente 
+
+  
+
+ETL load continua do cliente 
+
+  
+
+Insert into DW_CLIENTE(ID_FONTE_CLIENTE,SEXO, ANO_ANIVERSARIO, 
+
+MES_ANIVERSARIO,ANO_CADASTRO_DATA,MES_CADASTRO_DATA) 
+
+select 
+
+ID_CLIENTE, 
+
+GET_SEXO(SEXO), 
+
+DATEPART(YEAR,ANIVERSARIO), 
+
+DATEPART(MONTH,ANIVERSARIO), 
+
+DATEPART(YEAR,CADASTRO_DATA), 
+
+DATEPART(MONTH,CADASTRO_DATA) 
+
+  from Fonte_MaterialDeConstrucao.Cliente 
+
+where not exists( 
+
+select DW_MaterialConstrução.DW_CLIENTE.ID_FONTE_CLIENTE 
+
+from DW_MaterialConstrução.DW_CLIENTE 
+
+where DW_CLIENTE.ID_FONTE_CLIENTE = Fonte_MaterialDeConstrucao.Cliente.ID_CLIENTE 
+
+  
+
+) 
+
+  
+
+----------------------------------------------------------------------------------------- 
+
+  
+
+Insert into DW_TEMPO_VENDA (DIA,MES,ANO) 
+
+  
+
+select 
+
+DATAPART(DAY,DATA_VENDA), 
+
+DATAPART(MONTH,DATA_VENDA), 
+
+DATAPART(YEAR,DATA_VENDA)	 
+
+from Fonte_MaterialDeConstrucao.Venda 
+
+  
+
+----------------------------------------------------------------------------------------- 
+
+ETL inicial do funcionario 
+
+  
+
+Insert into DW_FUNCIONARIO(ID_FONTE_FUNCIONARIO) 
+
+  
+
+select 
+
+ID_FUNCIONARIO, 
+
+from Fonte_MaterialDeConstrucao.Funcionario 
+
+  
+
+ETL load continua do funcionario 
+
+  
+
+Insert into DW_FUNCIONARIO(ID_FONTE_FUNCIONARIO) 
+
+  
+
+select 
+
+ID_FUNCIONARIO, 
+
+from Fonte_MaterialDeConstrucao.Funcionario 
+
+where not exists( 
+
+select DW_MaterialConstrução.DW_FUNCIONARIO.ID_FONTE_FUNCIONARIO 
+
+from DW_MaterialConstrução.DW_FUNCIONARIO 
+
+where ID_FONTE_FUNCIONARIO= Fonte_MaterialDeConstrucao.Funcionario.ID_FUNCIONARIO 
+
+  
+
+) 
+
+  
+
+  
+
+----------------------------------------------------------------------------------------- 
+
+  
+
+ETL inicial do PRODUTO 
+
+  
+
+Insert into DW_PRODUTO(ID_FONTE_PRODUTO,PRECO_CUSTO,PRECO_VENDA) 
+
+  
+
+select 
+
+ID_PRODUTO, 
+
+PRECO_CUSTO, 
+
+PRECO_VENDA 
+
+from Fonte_MaterialDeConstrucao.Produto 
+
+  
+
+ETL load continua do PRODUTO 
+
+  
+
+Insert into DW_PRODUTO(ID_FONTE_PRODUTO,PRECO_CUSTO,PRECO_VENDA) 
+
+  
+
+select 
+
+ID_PRODUTO, 
+
+PRECO_CUSTO, 
+
+PRECO_VENDA 
+
+from Fonte_MaterialDeConstrucao.Produto 
+
+where not exists( 
+
+select DW_MaterialConstrução.DW_PRODUTO.ID_FONTE_PRODUTO 
+
+from DW_MaterialConstrução.DW_PRODUTO 
+
+where ID_FONTE_PRODUTO = Fonte_MaterialDeConstrucao.Produto.ID_PRODUTO 
+
+  
+
+) 
+
+  
+
+----------------------------------------------------------------------------------------- 
+
+ETL inicial do FATO_VENDA 
+
+  
+
+Insert into FATO_VENDA (ID_FONTE_VENDA, FK_ID_DW_PRODUTO, FK_ID_DW_CLIENTE,  
+
+FK_ID_DW_FUNCIONARIO, FK_ID_DW_TEMPO_VENDA,DESCONTO,VALOR_BRUTO,VALOR_LIQUIDO,TIPO) 
+
+select  
+
+E.ID_VENDA 
+
+A.ID_PRODUTO, 
+
+B.ID_CLIENTE, 
+
+C.ID_FUNCIONARIO, 
+
+(Select D.ID_DW_TEMPO_VENDA   
+
+from DW_TEMPO_VENDA AS D 
+
+where (D.DIA = DATEPART(DAY, E.DATA_VENDA) 
+
+   and D.MES = DATEPART(MONTH, E.DATA_VENDA) 
+
+   and D.ANO = DATEPART(YEAR, E.DATA_VENDA))), 
+
+E.DESCONTO, 
+
+E.VALOR_BRUTO, 
+
+E.VALOR_LIQUIDO, 
+
+GET_TIPO_VENDA(E.TIPO) 
+
+from Fonte_MaterialDeConstrucao.Produto AS A,  
+
+     Fonte_MaterialDeConstrucao.Cliente AS B,  
+
+     Fonte_MaterialDeConstrucao.Funcionario AS C, 
+
+     Fonte_MaterialDeConstrucao.Venda AS E, 
+
+     DW_MaterialConstrucao.DW_CLIENTE AS F, 
+
+     DW_MaterialConstrucao.DW_PRODUTO AS G, 
+
+     DW_MaterialConstrucao.DW_FUNCIONARIO AS H 
+
+where A.ID_PRODUTO = G.ID_FONTE_PRODUTO 
+
+and   B.ID_CLIENTE = F.ID_FONTE_CLIENTE 
+
+and   C.ID_FUNCIONARIO = H.ID_FONTE_FUNCIONARIO 
+
+  
+
+ETL load continua do FATO_VENDA 
+
+  
+
+  
+
+Insert into FATO_VENDA (ID_FONTE_VENDA, FK_ID_DW_PRODUTO, FK_ID_DW_CLIENTE,  
+
+FK_ID_DW_FUNCIONARIO, FK_ID_DW_TEMPO_VENDA,DESCONTO,VALOR_BRUTO,VALOR_LIQUIDO,TIPO) 
+
+select  
+
+E.ID_VENDA 
+
+A.ID_PRODUTO, 
+
+B.ID_CLIENTE, 
+
+C.ID_FUNCIONARIO, 
+
+(Select D.ID_DW_TEMPO_VENDA   
+
+from DW_TEMPO_VENDA AS D 
+
+where (D.DIA = DATEPART(DAY, E.DATA_VENDA) 
+
+   and D.MES = DATEPART(MONTH, E.DATA_VENDA) 
+
+   and D.ANO = DATEPART(YEAR, E.DATA_VENDA))), 
+
+E.DESCONTO, 
+
+E.VALOR_BRUTO, 
+
+E.VALOR_LIQUIDO, 
+
+GET_TIPO_VENDA(E.TIPO) 
+
+from Fonte_MaterialDeConstrucao.Produto AS A,  
+
+     Fonte_MaterialDeConstrucao.Cliente AS B,  
+
+     Fonte_MaterialDeConstrucao.Funcionario AS C, 
+
+     Fonte_MaterialDeConstrucao.Venda AS E, 
+
+     DW_MaterialConstrucao.DW_CLIENTE AS F, 
+
+     DW_MaterialConstrucao.DW_PRODUTO AS G, 
+
+     DW_MaterialConstrucao.DW_FUNCIONARIO AS H 
+
+where A.ID_PRODUTO = G.ID_FONTE_PRODUTO 
+
+and   B.ID_CLIENTE = F.ID_FONTE_CLIENTE 
+
+and   C.ID_FUNCIONARIO = H.ID_FONTE_FUNCIONARIO 
+
+where not exists( 
+
+select DW_MaterialConstrução.FATO_VENDA.ID_FONTE_VENDA 
+
+from DW_MaterialConstrução.FATO_VENDA 
+
+where ID_FONTE_VENDA = Fonte_MaterialDeConstrucao.Venda.ID_VENDA 
+
+  
+
+) 
